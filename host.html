@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta X - Screen Host</title>
+    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.18.0.js"></script>
+    <style>
+        body { background: #0a0a0c; color: #00ffcc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        #local-player { width: 80%; height: 300px; background: #000; border: 2px dashed #00ffcc; border-radius: 15px; margin-bottom: 20px; }
+        button { padding: 15px 30px; font-size: 1.1rem; background: #00ffcc; color: #000; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(0, 255, 204, 0.3); }
+        button:disabled { background: #333; color: #888; cursor: not-allowed; }
+        .info { margin-top: 15px; color: #888; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <h1>بث الشاشة - Delta X 🚀</h1>
+    
+    <div id="local-player"></div>
+
+    <button id="start-btn" onclick="handleStart()">ابدأ مشاركة الشاشة الآن</button>
+
+    <div class="info" id="status">الحالة: جاهز للبث</div>
+
+    <script>
+        // بيانات مشروعك
+        const APP_ID = "0350681b9ec943c38da2482871048c08";
+        const CHANNEL = "delta-x-room"; 
+
+        const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+        let screenTrack = null;
+
+        async function handleStart() {
+            const btn = document.getElementById('start-btn');
+            const status = document.getElementById('status');
+
+            try {
+                btn.disabled = true;
+                status.innerText = "جاري الاتصال بالسيرفر...";
+
+                // 1. الانضمام للقناة
+                await client.join(APP_ID, CHANNEL, null, null);
+
+                // 2. إنشاء تراك الشاشة (Screen Track)
+                // ملحوظة: هذا السطر هو ما يطلب إذن الـ Screen Cast
+                screenTrack = await AgoraRTC.createScreenVideoTrack({
+                    encoderConfig: {
+                        width: 640,
+                        height: 360,
+                        frameRate: 15, // تقليل الفريمات لتقليل اللاج في الألعاب
+                        bitrateMax: 600
+                    }
+                }, "auto");
+
+                // 3. نشر البث لكي يراه اللاعبون
+                await client.publish(screenTrack);
+
+                // 4. عرض البث أمامك لتتأكد أنه يعمل
+                screenTrack.play("local-player");
+
+                status.innerText = "البث مباشر الآن! (جاري مشاركة الشاشة)";
+                status.style.color = "#ff4444";
+
+            } catch (error) {
+                console.error(error);
+                btn.disabled = false;
+                status.innerText = "خطأ: " + error.message;
+                
+                if (error.message.includes("Permission")) {
+                    alert("يجب إعطاء صلاحية تسجيل الشاشة من إعدادات المتصفح/النظام.");
+                } else if (location.protocol !== 'https:') {
+                    alert("خطأ أمني: يجب تشغيل الموقع برابط HTTPS (قفل الأمان).");
+                }
+            }
+        }
+
+        // إغلاق البث عند قفل الصفحة
+        window.onbeforeunload = function() {
+            if (screenTrack) {
+                screenTrack.close();
+                client.leave();
+            }
+        };
+    </script>
+</body>
+</html>
