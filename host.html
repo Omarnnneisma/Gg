@@ -2,20 +2,24 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>Delta-X Cloud Server</title>
+    <title>Delta-X Cloud Engine</title>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; }
-        video { width: 95%; max-width: 500px; border: 2px solid #0f0; border-radius: 15px; box-shadow: 0 0 20px #0f0; margin-top: 20px; }
-        button { padding: 15px 35px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 10px; font-size: 20px; margin-top: 15px; }
-        #status { color: #ff0; margin-top: 15px; font-weight: bold; }
+        body { background: #050505; color: #00ff41; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; }
+        .container { margin-top: 50px; }
+        video { width: 90%; max-width: 600px; border: 3px solid #00ff41; border-radius: 20px; box-shadow: 0 0 30px #00ff41; background: #000; }
+        .btn-stream { padding: 15px 40px; background: #00ff41; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 50px; font-size: 22px; transition: 0.3s; margin-top: 20px; }
+        .btn-stream:hover { box-shadow: 0 0 50px #00ff41; transform: scale(1.05); }
+        #status { margin-top: 20px; font-size: 18px; color: #00ff41; opacity: 0.8; }
     </style>
 </head>
 <body>
-    <h1 style="text-shadow: 0 0 10px #0f0;">CLOUD GAMING ENGINE v2</h1>
-    <video id="localVideo" autoplay playsinline muted></video>
-    <br>
-    <button id="startBtn">بدء البث عبر WebRTC</button>
-    <div id="status">جاهز للربط بالبورت المحلي...</div>
+    <div class="container">
+        <h1>DELTA-X CORE HOST</h1>
+        <video id="localVideo" autoplay playsinline muted></video>
+        <br>
+        <button id="startBtn" class="btn-stream">تفعيل البث السحابي</button>
+        <div id="status">النظام بانتظار Core.java...</div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -33,36 +37,34 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let peerConnection;
-        const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
         document.getElementById('startBtn').onclick = async () => {
             const status = document.getElementById('status');
             try {
-                // استدعاء دالة الجافا المحقونة
-                const stream = await navigator.mediaDevices.getDisplayMedia();
+                // نداء الدالة اللي بتربط بالـ Core في الأندرويد
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 document.getElementById('localVideo').srcObject = stream;
-                status.innerText = "البث المحلي متصل.. جاري النقل عبر السحاب 📡";
+                status.innerText = "البث المباشر نشط الآن ✅";
 
-                peerConnection = new RTCPeerConnection(config);
-                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+                // إعداد WebRTC
+                const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
-                peerConnection.onicecandidate = e => {
+                pc.onicecandidate = e => {
                     if (e.candidate) db.ref('rooms/1/hostCandidates').push(e.candidate.toJSON());
                 };
 
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
                 await db.ref('rooms/1').set({ offer: { type: offer.type, sdp: offer.sdp } });
 
                 db.ref('rooms/1/answer').on('value', async (snap) => {
-                    if (snap.val() && !peerConnection.currentRemoteDescription) {
-                        await peerConnection.setRemoteDescription(new RTCIceDescription(snap.val()));
-                        status.innerText = "تم الربط بنجاح! أنت الآن في وضع Cloud Gaming ✅";
+                    if (snap.val() && !pc.currentRemoteDescription) {
+                        await pc.setRemoteDescription(new RTCIceDescription(snap.val()));
+                        status.innerText = "متصل باللاعب الآخر 📡";
                     }
                 });
             } catch (err) {
-                status.innerText = "فشل: " + err.message;
+                status.innerText = "خطأ في الاتصال بالـ Core: " + err.message;
             }
         };
     </script>
