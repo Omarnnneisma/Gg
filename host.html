@@ -1,85 +1,144 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="ar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delta X - Screen Host</title>
-    <script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.18.0.js"></script>
+    <title>Delta-X WebRTC Host</title>
     <style>
-        body { background: #0a0a0c; color: #00ffcc; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        #local-player { width: 80%; height: 300px; background: #000; border: 2px dashed #00ffcc; border-radius: 15px; margin-bottom: 20px; }
-        button { padding: 15px 30px; font-size: 1.1rem; background: #00ffcc; color: #000; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(0, 255, 204, 0.3); }
-        button:disabled { background: #333; color: #888; cursor: not-allowed; }
-        .info { margin-top: 15px; color: #888; font-size: 0.9rem; }
+        /* CSS للحصول على واجهة احترافية */
+        body { 
+            background: #000; 
+            color: #0f0; 
+            font-family: 'Courier New', monospace; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        h1 { font-size: 24px; text-shadow: 0 0 10px #0f0; }
+        #status { color: #888; margin-bottom: 20px; }
+        video { 
+            width: 90%; 
+            max-width: 500px; 
+            border: 2px solid #333; 
+            border-radius: 10px; 
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2); 
+            background: #111;
+        }
+        button { 
+            padding: 15px 40px; 
+            font-size: 18px; 
+            font-weight: bold;
+            cursor: pointer; 
+            background: #0f0; 
+            color: #000; 
+            border: none; 
+            border-radius: 50px; 
+            transition: 0.3s;
+            box-shadow: 0 0 15px #0f0;
+        }
+        button:hover { transform: scale(1.05); box-shadow: 0 0 25px #0f0; }
+        button:active { transform: scale(0.95); }
     </style>
 </head>
 <body>
 
-    <h1>بث الشاشة - Delta X 🚀</h1>
+    <h1>DELTA-X STREAMER</h1>
+    <div id="status">جاهز للبدء..</div>
     
-    <div id="local-player"></div>
+    <button id="startBtn">ابدأ بث الشاشة الآن</button>
+    
+    <video id="localVideo" autoplay playsinline muted></video>
 
-    <button id="start-btn" onclick="handleStart()">ابدأ مشاركة الشاشة الآن</button>
-
-    <div class="info" id="status">الحالة: جاهز للبث</div>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <script>
-        // بيانات مشروعك
-        const APP_ID = "0350681b9ec943c38da2482871048c08";
-        const CHANNEL = "delta-x-room"; 
+        // 1. إعدادات Firebase الخاصة بك
+        const firebaseConfig = {
+            apiKey: "AIzaSyCpeOSPCzow5Iv472BUEmKvYVt63cIsi-E",
+            authDomain: "delta-x-b7b69.firebaseapp.com",
+            databaseURL: "https://delta-x-b7b69-default-rtdb.firebaseio.com",
+            projectId: "delta-x-b7b69",
+            storageBucket: "delta-x-b7b69.firebasestorage.app",
+            messagingSenderId: "758371825673",
+            appId: "1:758371825673:web:59fcf8401f5ae58bf9a0d8"
+        };
 
-        const client = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
-        let screenTrack = null;
+        // 2. تهيئة التطبيق
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        async function handleStart() {
-            const btn = document.getElementById('start-btn');
-            const status = document.getElementById('status');
+        const startBtn = document.getElementById('startBtn');
+        const localVideo = document.getElementById('localVideo');
+        const statusDiv = document.getElementById('status');
 
+        let peerConnection;
+        const servers = {
+            iceServers: [{ urls: 'stun:stun1.l.google.com:19302' }]
+        };
+
+        // 3. وظيفة بدء البث
+        startBtn.onclick = async () => {
             try {
-                btn.disabled = true;
-                status.innerText = "جاري الاتصال بالسيرفر...";
-
-                // 1. الانضمام للقناة
-                await client.join(APP_ID, CHANNEL, null, null);
-
-                // 2. إنشاء تراك الشاشة (Screen Track)
-                // ملحوظة: هذا السطر هو ما يطلب إذن الـ Screen Cast
-                screenTrack = await AgoraRTC.createScreenVideoTrack({
-                    encoderConfig: {
-                        width: 640,
-                        height: 360,
-                        frameRate: 15, // تقليل الفريمات لتقليل اللاج في الألعاب
-                        bitrateMax: 600
-                    }
-                }, "auto");
-
-                // 3. نشر البث لكي يراه اللاعبون
-                await client.publish(screenTrack);
-
-                // 4. عرض البث أمامك لتتأكد أنه يعمل
-                screenTrack.play("local-player");
-
-                status.innerText = "البث مباشر الآن! (جاري مشاركة الشاشة)";
-                status.style.color = "#ff4444";
-
-            } catch (error) {
-                console.error(error);
-                btn.disabled = false;
-                status.innerText = "خطأ: " + error.message;
+                statusDiv.innerText = "جاري طلب إذن الشاشة...";
                 
-                if (error.message.includes("Permission")) {
-                    alert("يجب إعطاء صلاحية تسجيل الشاشة من إعدادات المتصفح/النظام.");
-                } else if (location.protocol !== 'https:') {
-                    alert("خطأ أمني: يجب تشغيل الموقع برابط HTTPS (قفل الأمان).");
-                }
-            }
-        }
+                // التقاط شاشة الموبايل (WebRTC API)
+                const stream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: { cursor: "always" }, 
+                    audio: false 
+                });
+                
+                localVideo.srcObject = stream;
+                startBtn.style.display = 'none'; // إخفاء الزرار بعد البدء
+                statusDiv.innerText = "تم التقاط الشاشة. جاري الربط...";
 
-        // إغلاق البث عند قفل الصفحة
-        window.onbeforeunload = function() {
-            if (screenTrack) {
-                screenTrack.close();
-                client.leave();
+                // إنشاء الـ Peer Connection
+                peerConnection = new RTCPeerConnection(servers);
+                
+                // إضافة مسارات الفيديو للاتصال
+                stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+
+                // التعامل مع ICE Candidates (ضروري لربط الأجهزة ببعضها)
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        db.ref('rooms/1/hostCandidates').push(event.candidate.toJSON());
+                    }
+                };
+
+                // إنشاء الـ Offer ورفعه للفايربيس
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+
+                await db.ref('rooms/1').set({
+                    offer: { type: offer.type, sdp: offer.sdp }
+                });
+
+                statusDiv.innerText = "البث مباشر الآن! في انتظار الطرف الآخر...";
+
+                // الاستماع للرد (Answer) من الطرف الآخر (الكمبيوتر)
+                db.ref('rooms/1/answer').on('value', async (snapshot) => {
+                    const answer = snapshot.val();
+                    if (answer && !peerConnection.currentRemoteDescription) {
+                        const remoteDesc = new RTCIceDescription(answer);
+                        await peerConnection.setRemoteDescription(remoteDesc);
+                        statusDiv.innerText = "تم الاتصال بالطرف الآخر بنجاح! ✅";
+                        statusDiv.style.color = "#0f0";
+                    }
+                });
+
+                // الاستماع للـ Candidates من الطرف الآخر
+                db.ref('rooms/1/remoteCandidates').on('child_added', (snapshot) => {
+                    const candidate = new RTCIceCandidate(snapshot.val());
+                    peerConnection.addIceCandidate(candidate);
+                });
+
+            } catch (err) {
+                console.error(err);
+                statusDiv.innerText = "خطأ: " + err.message;
+                statusDiv.style.color = "red";
             }
         };
     </script>
