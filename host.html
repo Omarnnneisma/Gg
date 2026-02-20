@@ -2,25 +2,26 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>Delta-X Real Streamer</title>
+    <title>Delta-X Pure Screen Streamer</title>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; text-align: center; padding: 20px; }
-        video { width: 100%; max-width: 400px; border: 2px solid #0f0; border-radius: 10px; margin: 20px 0; background: #111; }
-        button { padding: 15px 30px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; font-size: 16px; }
-        #status { color: #ff0000; margin-top: 15px; font-weight: bold; }
+        body { background: #000; color: #0f0; font-family: monospace; text-align: center; }
+        video { width: 90%; border: 2px solid #0f0; border-radius: 10px; background: #111; margin-top: 20px; }
+        button { padding: 15px 30px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 8px; margin-top: 10px; }
+        #status { color: #ff0; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <h1>DELTA-X HOST CONTROL</h1>
-    <video id="localVideo" autoplay playsinline muted></video>
+    <h2 style="color:#0f0">SYSTEM: CLOUD STREAMING</h2>
+    <video id="remoteVideo" autoplay playsinline muted></video>
     <br>
-    <button id="startBtn">ابدأ بث الشاشة الآن</button>
-    <div id="status">في انتظار الأوامر...</div>
+    <button id="startBtn">ابدأ بث الشاشة الحقيقي</button>
+    <div id="status">جاهز للإرسال...</div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <script>
+        // إعدادات الفايربيس بتاعتك
         const firebaseConfig = {
             apiKey: "AIzaSyCpeOSPCzow5Iv472BUEmKvYVt63cIsi-E",
             authDomain: "delta-x-b7b69.firebaseapp.com",
@@ -30,26 +31,22 @@
             messagingSenderId: "758371825673",
             appId: "1:758371825673:web:59fcf8401f5ae58bf9a0d8"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+
         let peerConnection;
         const servers = { iceServers: [{ urls: 'stun:stun1.l.google.com:19302' }] };
 
         document.getElementById('startBtn').onclick = async () => {
-            const status = document.getElementById('status');
             try {
-                // طلب الشاشة الحقيقية
-                const stream = await navigator.mediaDevices.getDisplayMedia({ 
-                    video: { cursor: "always" }, 
-                    audio: false 
-                });
-
-                document.getElementById('localVideo').srcObject = stream;
-                status.style.color = "#0f0";
-                status.innerText = "البث المباشر يعمل! ✅";
+                // طلب بث الشاشة (هيروح للجافا يفتح رسالة الأندرويد)
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                document.getElementById('remoteVideo').srcObject = stream;
+                document.getElementById('status').innerText = "جاري البث عبر WebRTC...";
 
                 peerConnection = new RTCPeerConnection(servers);
+                
+                // إضافة مسار الشاشة للـ WebRTC
                 stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
 
                 peerConnection.onicecandidate = e => {
@@ -63,16 +60,11 @@
                 db.ref('rooms/1/answer').on('value', async (snap) => {
                     if (snap.val() && !peerConnection.currentRemoteDescription) {
                         await peerConnection.setRemoteDescription(new RTCIceDescription(snap.val()));
-                        status.innerText = "متصل بالطرف الآخر... 📡";
+                        document.getElementById('status').innerText = "تم الربط بنجاح! 📡";
                     }
                 });
-
             } catch (err) {
-                console.error(err);
-                status.innerText = "خطأ: " + err.message;
-                if (err.message.includes("start video source")) {
-                    status.innerText = "خطأ: المصدر مشغول. أعد تشغيل التطبيق.";
-                }
+                document.getElementById('status').innerText = "خطأ: " + err.message;
             }
         };
     </script>
