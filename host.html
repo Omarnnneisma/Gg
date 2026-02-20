@@ -2,24 +2,26 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>Delta-X Cloud Engine</title>
+    <title>Delta-X Cloud Host (Port 8080)</title>
     <style>
-        body { background: #050505; color: #00ff41; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; }
-        .container { margin-top: 50px; }
-        video { width: 90%; max-width: 600px; border: 3px solid #00ff41; border-radius: 20px; box-shadow: 0 0 30px #00ff41; background: #000; }
-        .btn-stream { padding: 15px 40px; background: #00ff41; color: #000; border: none; cursor: pointer; font-weight: bold; border-radius: 50px; font-size: 22px; transition: 0.3s; margin-top: 20px; }
-        .btn-stream:hover { box-shadow: 0 0 50px #00ff41; transform: scale(1.05); }
-        #status { margin-top: 20px; font-size: 18px; color: #00ff41; opacity: 0.8; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 20px; }
+        h1 { text-shadow: 0 0 10px #0f0; }
+        /* هنا بنعرض اللي الـ Core بيبثه على 8080 */
+        #localStream { width: 100%; max-width: 500px; border: 3px solid #0f0; border-radius: 15px; box-shadow: 0 0 20px #0f0; }
+        canvas { display: none; } /* كانفس مخفي لتحويل الصور لفيديو */
+        button { padding: 15px 30px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 10px; font-size: 18px; margin-top: 20px; }
+        #status { color: #ff0; margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>DELTA-X CORE HOST</h1>
-        <video id="localVideo" autoplay playsinline muted></video>
-        <br>
-        <button id="startBtn" class="btn-stream">تفعيل البث السحابي</button>
-        <div id="status">النظام بانتظار Core.java...</div>
-    </div>
+    <h1>DELTA-X CORE ENGINE</h1>
+    
+    <img id="localStream" src="http://localhost:8080" crossorigin="anonymous">
+    <canvas id="bufferCanvas"></canvas>
+    
+    <br>
+    <button id="startBtn">بدء البث السحابي (WebRTC)</button>
+    <div id="status">في انتظار الاتصال بـ Core:8080...</div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -27,44 +29,66 @@
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCpeOSPCzow5Iv472BUEmKvYVt63cIsi-E",
-            authDomain: "delta-x-b7b69.firebaseapp.com",
             databaseURL: "https://delta-x-b7b69-default-rtdb.firebaseio.com",
             projectId: "delta-x-b7b69",
-            storageBucket: "delta-x-b7b69.firebasestorage.app",
-            messagingSenderId: "758371825673",
-            appId: "1:758371825673:web:59fcf8401f5ae58bf9a0d8"
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        const img = document.getElementById('localStream');
+        const canvas = document.getElementById('bufferCanvas');
+        const ctx = canvas.getContext('2d');
+        let pc;
+
+        // الرد على سؤالك: إزاي بنبعت الـ Stream؟
+        function getStreamFromLocalhost() {
+            // بنضبط الكانفس على نفس مقاس الصورة اللي جاية من 8080
+            canvas.width = img.naturalWidth || 1280;
+            canvas.height = img.naturalHeight || 720;
+            
+            // بنرسم الصورة على الكانفس 30 مرة في الثانية (30 FPS)
+            function draw() {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                requestAnimationFrame(draw);
+            }
+            draw();
+
+            // هنا السحر: بنحول الكانفس لـ Stream (فيديو)
+            return canvas.captureStream(30); 
+        }
+
         document.getElementById('startBtn').onclick = async () => {
             const status = document.getElementById('status');
             try {
-                // نداء الدالة اللي بتربط بالـ Core في الأندرويد
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                document.getElementById('localVideo').srcObject = stream;
-                status.innerText = "البث المباشر نشط الآن ✅";
+                status.innerText = "جاري سحب البث وتحويله لـ WebRTC...";
+                
+                // 1. الحصول على الـ Stream من الكانفس
+                const stream = getStreamFromLocalhost();
 
-                // إعداد WebRTC
-                const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+                // 2. إعداد اتصال WebRTC
+                pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+
+                // 3. إضافة التراك (التنفيذ الفعلي للسطر اللي سألت عليه)
                 stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
+                // 4. إرسال الـ Offer للفايربيس
                 pc.onicecandidate = e => {
                     if (e.candidate) db.ref('rooms/1/hostCandidates').push(e.candidate.toJSON());
                 };
 
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
-                await db.ref('rooms/1').set({ offer: { type: offer.type, sdp: offer.sdp } });
+                await db.ref('rooms/1/offer').set({ type: offer.type, sdp: offer.sdp });
 
                 db.ref('rooms/1/answer').on('value', async (snap) => {
                     if (snap.val() && !pc.currentRemoteDescription) {
                         await pc.setRemoteDescription(new RTCIceDescription(snap.val()));
-                        status.innerText = "متصل باللاعب الآخر 📡";
+                        status.innerText = "تم الربط السحابي بنجاح ✅";
                     }
                 });
+
             } catch (err) {
-                status.innerText = "خطأ في الاتصال بالـ Core: " + err.message;
+                status.innerText = "خطأ: " + err.message;
             }
         };
     </script>
