@@ -5,17 +5,17 @@
     <title>Delta-X Real Streamer</title>
     <style>
         body { background: #000; color: #0f0; font-family: monospace; text-align: center; padding: 20px; }
-        video { width: 100%; max-width: 400px; border: 2px solid #0f0; border-radius: 10px; margin: 20px 0; }
-        button { padding: 15px 30px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; }
-        #status { color: #888; margin-top: 10px; }
+        video { width: 100%; max-width: 400px; border: 2px solid #0f0; border-radius: 10px; margin: 20px 0; background: #111; }
+        button { padding: 15px 30px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 5px; font-size: 16px; }
+        #status { color: #ff0000; margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>DELTA-X HOST</h1>
+    <h1>DELTA-X HOST CONTROL</h1>
     <video id="localVideo" autoplay playsinline muted></video>
     <br>
-    <button id="startBtn">ابدأ مشاركة الشاشة الحقيقية</button>
-    <div id="status">جاهز للربط...</div>
+    <button id="startBtn">ابدأ بث الشاشة الآن</button>
+    <div id="status">في انتظار الأوامر...</div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
@@ -39,10 +39,15 @@
         document.getElementById('startBtn').onclick = async () => {
             const status = document.getElementById('status');
             try {
-                // استدعاء الدالة المحقونة من الأندرويد
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                // طلب الشاشة الحقيقية
+                const stream = await navigator.mediaDevices.getDisplayMedia({ 
+                    video: { cursor: "always" }, 
+                    audio: false 
+                });
+
                 document.getElementById('localVideo').srcObject = stream;
-                status.innerText = "جاري البث لايف...";
+                status.style.color = "#0f0";
+                status.innerText = "البث المباشر يعمل! ✅";
 
                 peerConnection = new RTCPeerConnection(servers);
                 stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
@@ -58,14 +63,18 @@
                 db.ref('rooms/1/answer').on('value', async (snap) => {
                     if (snap.val() && !peerConnection.currentRemoteDescription) {
                         await peerConnection.setRemoteDescription(new RTCIceDescription(snap.val()));
-                        status.innerText = "تم الاتصال بالكمبيوتر! ✅";
+                        status.innerText = "متصل بالطرف الآخر... 📡";
                     }
                 });
+
             } catch (err) {
+                console.error(err);
                 status.innerText = "خطأ: " + err.message;
+                if (err.message.includes("start video source")) {
+                    status.innerText = "خطأ: المصدر مشغول. أعد تشغيل التطبيق.";
+                }
             }
         };
     </script>
 </body>
 </html>
-
