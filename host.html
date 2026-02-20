@@ -2,26 +2,25 @@
 <html lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>Delta-X Pure Screen Streamer</title>
+    <title>Delta-X Cloud Server</title>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; text-align: center; }
-        video { width: 90%; border: 2px solid #0f0; border-radius: 10px; background: #111; margin-top: 20px; }
-        button { padding: 15px 30px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 8px; margin-top: 10px; }
-        #status { color: #ff0; margin-top: 10px; }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; }
+        video { width: 95%; max-width: 500px; border: 2px solid #0f0; border-radius: 15px; box-shadow: 0 0 20px #0f0; margin-top: 20px; }
+        button { padding: 15px 35px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 10px; font-size: 20px; margin-top: 15px; }
+        #status { color: #ff0; margin-top: 15px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h2 style="color:#0f0">SYSTEM: CLOUD STREAMING</h2>
-    <video id="remoteVideo" autoplay playsinline muted></video>
+    <h1 style="text-shadow: 0 0 10px #0f0;">CLOUD GAMING ENGINE v2</h1>
+    <video id="localVideo" autoplay playsinline muted></video>
     <br>
-    <button id="startBtn">ابدأ بث الشاشة الحقيقي</button>
-    <div id="status">جاهز للإرسال...</div>
+    <button id="startBtn">بدء البث عبر WebRTC</button>
+    <div id="status">جاهز للربط بالبورت المحلي...</div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
     <script>
-        // إعدادات الفايربيس بتاعتك
         const firebaseConfig = {
             apiKey: "AIzaSyCpeOSPCzow5Iv472BUEmKvYVt63cIsi-E",
             authDomain: "delta-x-b7b69.firebaseapp.com",
@@ -35,18 +34,17 @@
         const db = firebase.database();
 
         let peerConnection;
-        const servers = { iceServers: [{ urls: 'stun:stun1.l.google.com:19302' }] };
+        const config = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
         document.getElementById('startBtn').onclick = async () => {
+            const status = document.getElementById('status');
             try {
-                // طلب بث الشاشة (هيروح للجافا يفتح رسالة الأندرويد)
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                document.getElementById('remoteVideo').srcObject = stream;
-                document.getElementById('status').innerText = "جاري البث عبر WebRTC...";
+                // استدعاء دالة الجافا المحقونة
+                const stream = await navigator.mediaDevices.getDisplayMedia();
+                document.getElementById('localVideo').srcObject = stream;
+                status.innerText = "البث المحلي متصل.. جاري النقل عبر السحاب 📡";
 
-                peerConnection = new RTCPeerConnection(servers);
-                
-                // إضافة مسار الشاشة للـ WebRTC
+                peerConnection = new RTCPeerConnection(config);
                 stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
 
                 peerConnection.onicecandidate = e => {
@@ -60,11 +58,11 @@
                 db.ref('rooms/1/answer').on('value', async (snap) => {
                     if (snap.val() && !peerConnection.currentRemoteDescription) {
                         await peerConnection.setRemoteDescription(new RTCIceDescription(snap.val()));
-                        document.getElementById('status').innerText = "تم الربط بنجاح! 📡";
+                        status.innerText = "تم الربط بنجاح! أنت الآن في وضع Cloud Gaming ✅";
                     }
                 });
             } catch (err) {
-                document.getElementById('status').innerText = "خطأ: " + err.message;
+                status.innerText = "فشل: " + err.message;
             }
         };
     </script>
